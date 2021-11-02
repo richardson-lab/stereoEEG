@@ -39,12 +39,36 @@ for i=2:length(ieeg_annotations)
 end
 
 % Read targets from spreadsheet
-if isfile(fullfile(data_dir,subject,strcat(subject, '_channels.xlsx')))
+if isfile(fullfile(data_dir,subject,strcat(subject, '_', session_type, '_channels.xlsx')))
 channel_labels = ieeg_session.data.channelLabels;
-[~,~,sheet] = xlsread(fullfile(data_dir,subject,strcat(subject, '_channels.xlsx')));
+[~,~,sheet] = xlsread(fullfile(data_dir,subject,strcat(subject,  '_', session_type, '_channels.xlsx')));
 else
     disp('No channel spreadsheet found. lead_targets will be left blank')
     sheet = {};
+end
+
+%% Concatenate toneResponse data
+if strcmp(session_type, 'Induction')
+    tone_files = dir(fullfile(data_dir,subject,'toneResponse_Induction','*.mat'));
+    load(fullfile(tone_files(1).folder,tone_files(1).name));
+    tones.dat = dat;
+    tones.N = N;
+    tones.freqs = freqs;
+    tones.isi = isi;
+    tones.dur = dur;
+    tones.amp = amp;
+    tones.tint = tint;
+    tones.ftap = ftap;
+    tones.subj = subj;
+    for i=2:length(tone_files)
+        load(fullfile(tone_files(i).folder,tone_files(i).name));
+        tones.dat = [tones.dat; dat];
+        tones.N = tones.N + N;
+        tones.freqs = [tones.freqs, freqs];
+        tones.isi = [tones.isi, isi];
+    end
+else
+    tones = 'no toneResponse data collected';
 end
 
 %% Build and save session structure
@@ -59,5 +83,6 @@ session.t = t;                                              % time in seconds fo
 session.annotations = annotations;                          % annotations typed during session
 session.lead_targets = sheet;                               % anatomical target of each lead
 session.bad_channels = bad_channels;                        % manually identified noise channels
+session.behavioral = tones;                                 % concatenated toneResponse data
 
 save(fullfile(data_dir,subject,strcat(subject,'_', session_type, '.mat')),'session','-V7.3');
