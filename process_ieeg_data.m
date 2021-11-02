@@ -83,6 +83,6 @@ session.t = t;                                              % time in seconds fo
 session.annotations = annotations;                          % annotations typed during session
 session.lead_targets = sheet;                               % anatomical target of each lead
 session.bad_channels = bad_channels;                        % manually identified noise channels
-session.behavioral = tones;                                 % concatenated toneResponse data
+session.tones = tones;                                      % concatenated toneResponse data
 
 save(fullfile(data_dir,subject,strcat(subject,'_', session_type, '.mat')),'session','-V7.3');
