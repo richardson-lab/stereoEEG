@@ -19,3 +19,7 @@ Load .mat file for session. Then produce power spectral density (PSD) plot with:
 `pwelchPlot(session.data,session.sample_rate,[0.5 500],5,1,500,session.channel_labels(:,1));`  
 Identify bad channels by clicking on outlier PSD with Edit Plot tool and finding channel name:  
 `get(gco,'Tag')`
+
+## Quantitative stability analysis
+Load .mat file for session. Then perform analysis with:  
+`seegStability(session)`.
