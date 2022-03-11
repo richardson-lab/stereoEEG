@@ -1,8 +1,11 @@
 function seegStability(session)
 % function seegStability(session)
 %   Stability analysis of sEEG data using multivariate autoregression
-%   modeling. session = data structure for recording session from sEEG
-%   project.
+%   modeling: individual session analysis. 
+%   
+%   Produces plots in same style as Solovey et al 2015 J Neurosci
+%   (Figs. 2, 3, 4). session = data structure for recording session from
+%   sEEG project.
 %
 %   DR 02/2022
 
@@ -14,6 +17,7 @@ twn = 0.5; % time window size (s)
 lbn = 0.05:0.005:1.02; % eigenvalue bins
 lth = 0.5; % eigenvalue thresholds (can list more than one)
 smt = [2 10]; % smoothing factor [crit index bins, time bins] (leave empty [] for no smoothing)
+sdir = '/Users/drew/Data/'; % save directory (leave empty [] to not save anything)
 
 % remove bad channels
 iDC = find(strncmp(session.channel_labels(:,1),'DC',2))'; % DC channels (not included in bad channel list?)
@@ -22,7 +26,8 @@ clab = session.channel_labels(igood,1);
 cdat = session.data(:,igood);
 fs = session.sample_rate;
 N = length(igood);
-subj = [session.subject ' ' session.type];
+subj = [session.subject '_' session.type];
+annotations = session.annotations;
 clear session
 
 % line noise filter
@@ -56,9 +61,12 @@ end
 % pwelchPlot(cdat,fs,[0.5 500],5,1,500,clab); % PSD of cleaned data (takes a long time)
 % timePlot(cdat,fs,[],[],1,[],clab); % scrolling time plot of cleaned data
 
-% multivariate AR model fit and eigendecomposition
+% time bins
 is = 1:round(twn*fs):size(cdat,1); % window start times (samples)
 Nwin = length(is)-1;
+tcenter = is(1:end-1)/fs+twn/2; % s
+
+% multivariate AR model fit and eigendecomposition
 lambhist = zeros(length(lbn)-1,Nwin);
 for ii = 1:Nwin
     [~,A,C,~,~,~] = arfit(cdat(is(ii):is(ii+1)-1,:),1,1); % first order model
@@ -78,16 +86,44 @@ end
 figure('Name',mfilename,'NumberTitle','off','Units','normalized','Position',[1/3 1/6 1/3 2/3],'Color','w');
 h1 = subplot(2+length(lth),1,1:2);
 colormap(hot(256));
-imagesc(is(1:end-1)/fs/60,lbn,lambhist);
+imagesc(tcenter/60,lbn,lambhist);
 set(gca,'Box','off','TickDir','out','FontSize',14,'YDir','normal');
-xlabel('min'); ylabel('criticality index'); title(subj);
+xlabel('min'); ylabel('criticality index'); title(subj,'Interpreter','none');
 hc = colorbar('Location','eastoutside');
-hc.Label.String = 'number of modes';
+hc.Label.String = 'number of modes'; h = zeros(1,length(lth));
 for ii = 1:length(lth)
     h(ii) = subplot(2+length(lth),1,2+ii);
-    plot(is(1:end-1)/fs/60,lambthresh(ii,:),'k','LineWidth',2);
+    plot(tcenter/60,lambthresh(ii,:),'k','LineWidth',2);
     axis tight; set(gca,'Box','off','TickDir','out','FontSize',14);
     xlabel('min'); ylabel(['modes > ' num2str(lth(ii))]);
     l1 = get(h1,'Position'); l2 = get(h(ii),'Position');
     set(h(ii),'Position',[l2(1:2) l1(3) l2(4)]);
+end
+
+% save data for across-subject analyses (only saves first threshold data; overwrites any prior saves for this subject)
+if ~isempty(sdir)
+    try
+       load([sdir 'seegStability.mat'],'stability');
+       ind = find(strcmp({stability.subj},subj), 1);
+       if isempty(ind)
+           ind = length(stability)+1;
+       end
+    catch
+        ind = 1;
+    end
+    stability(ind).subj = subj;
+    stability(ind).lns = lns;
+    stability(ind).lpc = lpc;
+    stability(ind).car = car;
+    stability(ind).twn = twn;
+    stability(ind).lth = lth(1);
+    stability(ind).smt = smt;
+    stability(ind).anno = annotations;
+    stability(ind).t = tcenter;
+    stability(ind).lambthresh = lambthresh(1,:);
+    try
+        save([sdir 'seegStability.mat'],'stability','-append');
+    catch
+        save([sdir 'seegStability.mat'],'stability');
+    end
 end
