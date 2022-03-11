@@ -24,6 +24,10 @@ Identify bad channels by clicking on outlier PSD with Edit Plot tool and finding
 Replicating analysis of Solovey et al 2015 J Neurosci (Figures 2, 3, 4).
 Load .mat file for session. Then perform analysis with:  
 `seegStability(session);`.
+All available sessions can be batch processed using:  
+`seegStabilityBatch;` which will generate a plot for each session and save a .mat file for population analysis.  
+After loading that population .mat file containing the structure `stability`, the population analysis can be run with:  
+`seegStabilityPop(stability);`
 
 ## Time-frequency analysis
 Computes both average power and average criticality in each time x frequency bin. 
