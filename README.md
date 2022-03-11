@@ -20,6 +20,12 @@ Load .mat file for session. Then produce power spectral density (PSD) plot with:
 Identify bad channels by clicking on outlier PSD with Edit Plot tool and finding channel name:  
 `get(gco,'Tag')`
 
-## Quantitative stability analysis
+## Stability analysis 
+Replicating analysis of Solovey et al 2015 J Neurosci (Figures 2, 3, 4).
 Load .mat file for session. Then perform analysis with:  
-`seegStability(session)`.
+`seegStability(session);`.
+
+## Time-frequency analysis
+Computes both average power and average criticality in each time x frequency bin. 
+Load .mat file for session. Then perform analysis with:  
+`seegTF(session);`.
