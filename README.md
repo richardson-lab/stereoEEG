@@ -33,3 +33,8 @@ After loading that population .mat file containing the structure `stability`, th
 Computes both average power and average criticality in each time x frequency bin. 
 Load .mat file for session. Then perform analysis with:  
 `seegTF(session);`.
+
+## Criticality-frequency analysis
+Computes distribution of mode criticality vs mode frequency for a specified pair of time windows (awake vs anesthetized) in a session. 
+Load .mat file for session. Then peform analyis with:
+`seegCF(session,tawake,tanesth);`.
