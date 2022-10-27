@@ -85,4 +85,4 @@ session.lead_targets = sheet;                               % anatomical target 
 session.bad_channels = bad_channels;                        % manually identified noise channels
 session.tones = tones;                                      % concatenated toneResponse data
 
-save(fullfile(data_dir,subject,strcat(subject,'_', session_type, '.mat')),'session','-V7.3');
+save(fullfile(data_dir,subject,strcat(subject,'_', session_type, '.mat')),'-struct','session','-V7.3');
