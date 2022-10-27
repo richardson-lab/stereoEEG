@@ -12,7 +12,7 @@ sess = 'HUP224_Induction.mat'; % session data
 
 % check for tone-response data
 cd(ddir);
-load(sess,'-mat','session');
+session = load(sess,'-mat');
 if ~isfield(session,'tones')
     error('no toneResponse behavioral data detected in session structure');
 end
@@ -71,4 +71,4 @@ session.tones.ndat = session.tones.dat(ind,:);
 session.tones.ndat(:,1) = b(1)+b(2)*session.tones.ndat(:,1); % add as a new field to the session.tones sub-structure
 code = {'tone on';'tone off';'button press';'button release'}; % also add as a new expanded annotations field to session structure
 session.annotations2 = [session.annotations; [code(session.tones.ndat(:,2)+1), num2cell(session.tones.ndat(:,1))]];
-save(sess,'session','-V7.3');
+save(sess,'-struct','session','-V7.3');
