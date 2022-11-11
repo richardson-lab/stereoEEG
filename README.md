@@ -7,7 +7,7 @@ Process and save .mat file for each session with:
 If tone response data is available for the session, make sure the 'toneResponse_Induction' subfolder is in the specified 'data_dir/subject' path so that it is included in the .mat file.
 
 ## Sync behavioral-sEEG data
-Run `syncToneResponse;`. 
+Run `toneResponseSync;`. 
 This adds the tone on, tone off, button press, button release timestamped events to the session annotations. 
 
 ## Qualitative analysis: time domain
