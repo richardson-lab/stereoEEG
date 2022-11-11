@@ -1,5 +1,5 @@
 # stereoEEG
-Repository to house code for a collaborative project analyzing stereoEEG data during anesthesia induction and sleep for NINDS-R01NS113366: [The role of dynamical criticality in human perception](https://reporter.nih.gov/project-details/9969278)
+Repository to house code for a collaborative project analyzing stereoEEG data during anesthesia induction, anesthesia emergence, and sleep for NINDS-R01NS113366: [The role of dynamical criticality in human perception](https://reporter.nih.gov/project-details/9969278)
 
 ## Downloading data from iEEG.org
 Process and save .mat file for each session with:  
