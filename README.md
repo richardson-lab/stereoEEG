@@ -3,7 +3,8 @@ Repository to house code for a collaborative project analyzing stereoEEG data du
 
 ## Downloading data from iEEG.org
 Process and save .mat file for each session with:  
-`process_ieeg_data;`
+`process_ieeg_data;`  
+If tone response data is available for the session, make sure the toneResponse_Induction subfolder is in the data_dir/subject/ path.
 
 ## Sync behavioral-sEEG data
 Run `syncToneResponse;`. 
