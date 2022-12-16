@@ -6,6 +6,9 @@ Process and save .mat file for each session with:
 `process_ieeg_data;`  
 If tone response data is available for the session, make sure the 'toneResponse_Induction' subfolder is in the specified 'data_dir/subject' path so that it is included in the .mat file.
 
+## Add brain segmentation labels to each sEEG contact
+Run `addSEEGlabels.m;` to add labels to the channel_labels variable in the .mat file. Uses labels found in ITKSnap CSV file.
+
 ## Sync behavioral-sEEG data
 If tone response data is available for the session, run `toneResponseSync;`. 
 This adds the tone on, tone off, button press, button release timestamped events to the session annotations. 
