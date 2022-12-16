@@ -15,8 +15,7 @@ Run `toneResponseAnaly;` (requires functions in Smith2004 subfolder) to estimate
 
 ## Qualitative analysis: time domain
 Load .mat file for session. Then produce scrolling time plot with:  
-`timePlot(session.data,session.sample_rate,[],[],1,session.annotations,session.channel_labels(:,1));`.  
-To also view the behavioral events on the scrolling plot, use `session.annotations2` rather than `session.annotations`. 
+`timePlot(session.data,session.sample_rate,[],[],1,session.annotations,session.channel_labels(:,1));`. 
 
 ## Qualitative analysis: frequency domain
 Load .mat file for session. Then produce power spectral density (PSD) plot with:  
