@@ -10,6 +10,9 @@ If tone response data is available for the session, make sure the 'toneResponse_
 If tone response data is available for the session, run `toneResponseSync;`. 
 This adds the tone on, tone off, button press, button release timestamped events to the session annotations. 
 
+## Analyze behavioral data
+Run `toneResponseAnaly;` (requires functions in Smith2004 subfolder) to estimate probability of response based on response data following analysis of Smith et al 2004 J Neurosci. Estimate of time of loss of consciousness (LOC) follows similar criteria as Purdon et al 2013 PNAS.
+
 ## Qualitative analysis: time domain
 Load .mat file for session. Then produce scrolling time plot with:  
 `timePlot(session.data,session.sample_rate,[],[],1,session.annotations,session.channel_labels(:,1));`.  
