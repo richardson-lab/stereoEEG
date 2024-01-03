@@ -49,13 +49,11 @@ xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThre
 %% Create histogram of patient connectivity distribution
 figure
 patdist = cellfun(@numel,CC.PixelIdxList);
-histogram(patdist, 'Normalization', 'probability');
+histogram(patdist, 'BinEdges', 0:1:ceil(max(patdist)));
 title('Distribution of Patient Connected Voxels');
 xlabel('Number of Connected Voxels');
-ylabel('Probability');
-% xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
-set(gca,'XScale','log','YScale','log')
-axis tight
+ylabel('Frequ');
+xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
 %%
 function [binMat, gcidx] = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold)
 
