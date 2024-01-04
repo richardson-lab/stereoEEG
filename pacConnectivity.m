@@ -1,5 +1,5 @@
-% % parameters
-root = '/Users/andrewgabros/Library/CloudStorage/Box-Box/sEEG';
+% % parameters cd('/Users/tnl/matlab/stereoEEG')
+root = '/Users/tnl/Library/CloudStorage/Box-Box/sEEG';
 subj = 'HUP246_RID893'; % session name
 threshold = 0.95;
 % load data
@@ -10,17 +10,18 @@ load([subj '_Induction.mat']);
 conn = conndef(4, 'minimal');
 
 % create binary data matrix
-[pData, gcidx] = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold);
+pData = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold);
 
 % run permutation test
-[dist,permThreshold] = runPermTest(pData, gcidx, 1000, conn);
+shuffdims = [1, 0, 0, 0]; % [Channel, Phase, Amplitude, Time]
+nperm = 1000;
+[dist,permThreshold] = runPermTest(pData, shuffdims, nperm, conn);
 
 % Find connected components in patient binary data
 CC = bwconncomp(pData,conn);
 
 % Filter for connected voxel groups that are larger than perm threshold
 ccIdx = cellfun(@numel, CC.PixelIdxList) > permThreshold;
-% pacCC = CC.PixelIdxList{(cellfun(@numel, CC.PixelIdxList) > permThreshold)};
 pacCC = cat(1, CC.PixelIdxList{1,ccIdx});
 [sizeC, sizeP, sizeA, sizeT] = size(pData);
 [channels, phases, amps, times] = ind2sub([sizeC, sizeP, sizeA, sizeT], pacCC);
@@ -56,8 +57,11 @@ ylabel('Probability');
 % xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
 set(gca,'XScale','log','YScale','log')
 axis tight
-%%
-function [binMat, gcidx] = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold)
+
+
+% create binary matrix - outputs the binary matrix binMat containing zeros
+% in all dummy channels
+function binMat = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold)
 
 gcidx = find(ismember(channel_labels(:,1),PACparam.channel_labels(:,1)));
 bcidx = find(~ismember(channel_labels(:,1),PACparam.channel_labels(:,1)));
@@ -67,29 +71,40 @@ binMat = zeros(Tch, NP, NA, Nt);
 
 for ich = 1:Tch
     if any(ismember(gcidx,ich))
-        binMat(ich, :,:,:) = PACstat(gcidx == ich,  :,:,:,1) >= threshold;
+        binMat(ich,:,:,:) = PACstat(gcidx == ich,:,:,:,1) >= threshold;
     elseif any(ismember(bcidx,ich))
-        binMat(ich,  :,:,:) = zeros(NP,NA,Nt);
+        binMat(ich,:,:,:) = zeros(NP,NA,Nt);
     end
 end
 end
 
-% permutation test - need to add capability to shuffle other dimensions
+% permutation test - outputs connectivity distribution and connected set
+% size threshold
+function [connDistribution, permThreshold] = runPermTest(binMat, shuffdims, nPerm, conn)
 
-function [connDistribution, permThreshold] = runPermTest(binMat, gcidx, nPerm, conn)
-
-[Nch, NP, NA, Nt, ~] = size(binMat);
+gcidx = find(any(binMat ~= 0, [2 3 4])); % indices of data channels 
+ndim = size(binMat); [Nch, NP, NA, NT] = size(binMat);
+dimidx = {gcidx, (1:ndim(2))', (1:ndim(3))', (1:ndim(4))'};
 cDist = cell(nPerm,1);
 for p = 1:nPerm
-    % Reshape the data matrix to a 2D matrix where each column corresponds to a channel
-    reshapedData = reshape(binMat, [], Nch);
+    permutedData = binMat;
+    for n = 1:4
+        if shuffdims(n) == 1
 
-    % Randomly permute only the specified channels
-    permutedData = zeros(size(reshapedData));
-    permutedData(:,gcidx) = reshapedData(:, gcidx(randperm(length(gcidx))));
+            % Reshape the data matrix to a 2D matrix where each column
+            % corresponds to the dimension to be shuffled
+            reshapedData = reshape(permutedData,[], ndim(n));
 
-    % Reshape the permuted data back to the original dimensions
-    permutedData = reshape(permutedData, Nch, NA, NP, Nt);
+            % Randomly permute the specified dimension
+            idx = dimidx{n};
+            permutedData = zeros(size(reshapedData));
+            permutedData(:,idx) = reshapedData(:,idx(randperm(length(idx))));
+
+            % Reshape the permuted data back to the original dimensions
+            permutedData = reshape(permutedData,ndim);
+            
+        end
+    end
 
     % determine connectedness
     CC = bwconncomp(permutedData,conn);
