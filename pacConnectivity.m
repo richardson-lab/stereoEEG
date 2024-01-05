@@ -1,19 +1,20 @@
 % % parameters cd('/Users/tnl/matlab/stereoEEG')
 root = '/Users/tnl/Library/CloudStorage/Box-Box/sEEG';
 subj = 'HUP246_RID893'; % session name
-threshold = 0.95;
+threshold = 0.95; % for creating binary matrix
+conn = conndef(4, 'minimal'); % connectivity for bwconncomp
+
 % load data
 cd(fullfile(root,subj));
 load([subj '_Induction.mat']);
 
-% define connectivity for analysis
-conn = conndef(4, 'minimal');
+
 
 % create binary data matrix
 pData = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold);
 
 % run permutation test
-shuffdims = [1, 0, 0, 0]; % [Channel, Phase, Amplitude, Time]
+shuffdims = [2 3]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
 nperm = 1000;
 [dist,permThreshold] = runPermTest(pData, shuffdims, nperm, conn);
 
@@ -50,11 +51,10 @@ xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThre
 %% Create histogram of patient connectivity distribution
 figure
 patdist = cellfun(@numel,CC.PixelIdxList);
-histogram(patdist, 'Normalization', 'probability');
+histogram(patdist, 'Normalization', 'probability', 'BinMethod','fd');
 title('Distribution of Patient Connected Voxels');
 xlabel('Number of Connected Voxels');
 ylabel('Probability');
-% xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
 set(gca,'XScale','log','YScale','log')
 axis tight
 
@@ -81,36 +81,30 @@ end
 % permutation test - outputs connectivity distribution and connected set
 % size threshold
 function [connDistribution, permThreshold] = runPermTest(binMat, shuffdims, nPerm, conn)
-
-gcidx = find(any(binMat ~= 0, [2 3 4])); % indices of data channels 
-ndim = size(binMat); [Nch, NP, NA, NT] = size(binMat);
-dimidx = {gcidx, (1:ndim(2))', (1:ndim(3))', (1:ndim(4))'};
+cidx = find(any(binMat ~= 0, [2 3 4])); % indices of data channels 
+ndim = size(binMat);
 cDist = cell(nPerm,1);
 for p = 1:nPerm
     permutedData = binMat;
-    for n = 1:4
-        if shuffdims(n) == 1
-
-            % Reshape the data matrix to a 2D matrix where each column
-            % corresponds to the dimension to be shuffled
-            reshapedData = reshape(permutedData,[], ndim(n));
-
-            % Randomly permute the specified dimension
-            idx = dimidx{n};
-            permutedData = zeros(size(reshapedData));
-            permutedData(:,idx) = reshapedData(:,idx(randperm(length(idx))));
-
-            % Reshape the permuted data back to the original dimensions
-            permutedData = reshape(permutedData,ndim);
-            
+    for n = shuffdims
+        if n == 1
+            idx = cidx; 
+            permutedData(idx, :, :, :) = permutedData(idx(randperm(length(idx))), :, :, :);
+            % gctestidx = find(any(permutedData ~= 0, [2 3 4]));
+            % isequal(gctestidx, gcidx);
+        elseif n == 2
+            idx = 1:ndim(n); 
+            permutedData(:, idx, :, :) = permutedData(:, idx(randperm(length(idx))), :, :);
+        elseif n == 3
+            idx = 1:ndim(n); 
+            permutedData(:, :, idx, :) = permutedData(:, :, idx(randperm(length(idx))), :);
+        elseif n == 4
+            idx = 1:ndim(n); 
+            permutedData(:, :, :, idx) = permutedData(:, :, :, idx(randperm(length(idx))));
         end
     end
-
-    % determine connectedness
-    CC = bwconncomp(permutedData,conn);
-
-    % store connected voxel matrix
-    cDist{p} = CC.PixelIdxList;
+    CC = bwconncomp(permutedData,conn); % determine connectedness
+    cDist{p} = CC.PixelIdxList; % store connected voxel matrix
 end
 connDistributionCell = cellfun(@(nestedCellArray) cellfun(@numel, nestedCellArray), cDist, 'UniformOutput', false);
 connDistribution = horzcat(connDistributionCell{:});
