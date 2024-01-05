@@ -8,38 +8,31 @@ conn = conndef(4, 'minimal'); % connectivity for bwconncomp
 cd(fullfile(root,subj));
 load([subj '_Induction.mat']);
 
-
-
 % create binary data matrix
 pData = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold);
 
 % run permutation test
-shuffdims = [2 3]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
-nperm = 1000;
+nperm = 1000; shuffdims = [1]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
 [dist,permThreshold] = runPermTest(pData, shuffdims, nperm, conn);
 
 % Find connected components in patient binary data
 CC = bwconncomp(pData,conn);
 
 % Filter for connected voxel groups that are larger than perm threshold
-ccIdx = cellfun(@numel, CC.PixelIdxList) > permThreshold;
+ccN = cellfun(@numel,CC.PixelIdxList);
+ccIdx = ccN > permThreshold;
 pacCC = cat(1, CC.PixelIdxList{1,ccIdx});
-[sizeC, sizeP, sizeA, sizeT] = size(pData);
-[channels, phases, amps, times] = ind2sub([sizeC, sizeP, sizeA, sizeT], pacCC);
-rowSubscriptsMatrix = [channels, phases, amps, times];
 
-%% Create a 3D scatter plot
-figure
-scatter3(rowSubscriptsMatrix(:, 2), rowSubscriptsMatrix(:, 3), rowSubscriptsMatrix(:, 4), 50, rowSubscriptsMatrix(:, 1), 'filled');
-title([subj(1:6) ' Connected Voxels']);
-xlabel('Phase');
-ylabel('Amplitude');
-zlabel('Time');
-colormap(jet);
-cbar = colorbar;
-ticks = unique(rowSubscriptsMatrix(:, 1));
-cbar.Ticks = ticks;
-cbar.TickLabels = int2str(ticks);
+% Create connected group identifier list
+it = 1; idxs = [];
+for i = ccN(ccIdx)
+    ids = ones(i,1)*it;
+    it = it+1;
+    idxs = [idxs; ids];
+end
+
+[channels, phases, amps, times] = ind2sub(size(pData), pacCC);
+ccMatrix = [channels, phases, amps, times, idxs];
 
 %% Create histogram of permutation test connectivity distribution
 figure
@@ -57,7 +50,75 @@ xlabel('Number of Connected Voxels');
 ylabel('Probability');
 set(gca,'XScale','log','YScale','log')
 axis tight
+%% Interactive 3D scatter plot of connected sets
+fig = figure('Position', [100, 100, 800, 600]);
 
+% filter data as needed - modify plotting code to work with filtered matrix
+% Find rows with more than one unique value in column 1 for the same value in column 5
+% uniqueValuesColumn5 = unique(ccMatrix(:, 5));
+% filteredRows = [];
+% for i = 1:length(uniqueValuesColumn5)
+%     currentRows = ccMatrix(ccMatrix(:, 5) == uniqueValuesColumn5(i), :);
+%     uniqueValuesColumn1 = unique(currentRows(:, 1));
+%     if numel(uniqueValuesColumn1) > 1
+%         filteredRows = [filteredRows; currentRows];
+%     end
+% end
+filteredRows = ccMatrix;
+% Scatter plot of significant voxels colored by channel for the first set
+currentSet = 1;  
+scatterObj = scatter3(...
+    filteredRows(filteredRows(:,5) == currentSet, 2),...
+    filteredRows(filteredRows(:,5) == currentSet, 3),...
+    filteredRows(filteredRows(:,5) == currentSet, 4),...
+    50, filteredRows(filteredRows(:,5) == currentSet, 1), 'filled');
+title(['Interactive 3D Scatter Plot - Set ' num2str(currentSet)]);
+xlabel('Phase'); ylabel('Amplitude'); zlabel('Time');
+[~, NA, NP, Nt] = size(pData);
+xlim([0,NP+1]); ylim([0,NA+1]); zlim([0,Nt+1])
+colormap(flag); colorbar;
+
+% Store scatterObj and sets as appdata of the figure
+setappdata(fig, 'scatterObj', scatterObj);
+setappdata(fig, 'sets', filteredRows);
+
+% Create a uicontrol dropdown menu for channel selection
+uniqueSets = unique(filteredRows(:, 5));
+numSets = length(uniqueSets);
+setNames = cell(1, numSets);
+for i = 1:numSets
+    setNames{i} = ['Set ' num2str(uniqueSets(i))];
+end
+
+channelMenu = uicontrol('Style', 'popupmenu', 'Position', [10, 10, 120, 25],...
+    'String', ['Select Set|' setNames], 'Callback', @updateSet);
+
+% Function to update the scatter plot based on the selected channel
+function updateSet(source, ~)
+    fig = gcf;
+    scatterObj = getappdata(fig, 'scatterObj');
+    filteredRows = getappdata(fig, 'sets');
+
+    selectedSet = source.Value - 1;  % Adjust to match the channel numbering
+    if selectedSet == 0
+        % Show default channel
+        set(scatterObj, 'XData', filteredRows(filteredRows(:,5) == currentSet, 2));
+        set(scatterObj, 'YData', filteredRows(filteredRows(:,5) == currentSet, 3));
+        set(scatterObj, 'ZData', filteredRows(filteredRows(:,5) == currentSet, 4));
+        set(scatterObj, 'CData', filteredRows(filteredRows(:,5) == currentSet, 1));
+        title(['Interactive 3D Scatter Plot - Set ' num2str(currentSet)]);
+    else
+        % Show the selected channel
+        set(scatterObj, 'XData', filteredRows(filteredRows(:,5) == selectedSet, 2));
+        set(scatterObj, 'YData', filteredRows(filteredRows(:,5) == selectedSet, 3));
+        set(scatterObj, 'ZData', filteredRows(filteredRows(:,5) == selectedSet, 4));
+        set(scatterObj, 'CData', filteredRows(filteredRows(:,5) == selectedSet, 1));
+        title(['Interactive 3D Scatter Plot - Set ' num2str(selectedSet)]);
+    end
+guidata(gcf);
+
+end
+%%
 
 % create binary matrix - outputs the binary matrix binMat containing zeros
 % in all dummy channels
