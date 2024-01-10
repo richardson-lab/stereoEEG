@@ -45,7 +45,7 @@ for i = 1:numel(uniqueSets)
     correlationMatrix = corr(dataForCorrelation);
     correlationMatrices(i) = correlationMatrix(2);
 end
-%%
+%% Temporal participation ratio
 figure
 for s = uniqueSets'
     soi = cc(cc(:,5) == s,1:4);
