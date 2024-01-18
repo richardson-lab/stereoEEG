@@ -1,7 +1,7 @@
 % cd('/Users/tnl/matlab/stereoEEG')
 % parametersstats = grpstats(cc(:, 1:4), cc(:, 5), {'mean', 'std'}); 
 root = '/Users/tnl/Library/CloudStorage/Box-Box/sEEG';
-subj = 'HUP246_RID893'; % session name
+subj = 'HUP241_RID890'; % session name
 threshold = 0.95; % for creating binary matrix
 conn = conndef(4, 'minimal'); % connectivity for bwconncomp
 
@@ -10,7 +10,7 @@ cd(fullfile(root,subj));
 load([subj '_Induction.mat']);
 
 % create binary data matrix
-pData = createBinaryMatrix(PACparam, PACstat, channel_labels, threshold);
+pData = createBinaryMatrix(PACparam, PACmi, channel_labels, threshold);
 
 % run permutation test
 nperm = 1000; shuffdims = [1 2 3 4]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
@@ -20,43 +20,43 @@ nperm = 1000; shuffdims = [1 2 3 4]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
 cc = connectivity(pData, conn, permThreshold);
 
 %% Connected set characterization
-[min, max, mean, std] = grpstats(cc(:, 1:4), cc(:, 5), {'min','max','mean','std'});
-
-% Calculate the number of unique channels in each connected set
-uniqueChannelsPerSet = arrayfun(@(set) numel(unique(connectedSets(connectedSets(:, 1) == set, 2))), unique(connectedSets(:, 1)));
-
-% Calculate the dominant channel for each connected set
-dominantChannels = arrayfun(@(set) mode(connectedSets(connectedSets(:, 1) == set, 2)), unique(connectedSets(:, 1)));
-
-% Display results
-disp('Number of Unique Channels per Connected Set:');
-disp(uniqueChannelsPerSet');
-disp('Dominant Channel for Each Connected Set:');
-disp(dominantChannels');
+% [min, max, mean, std] = grpstats(cc(:, 1:4), cc(:, 5), {'min','max','mean','std'});
+% 
+% % Calculate the number of unique channels in each connected set
+% uniqueChannelsPerSet = arrayfun(@(set) numel(unique(connectedSets(connectedSets(:, 1) == set, 2))), unique(connectedSets(:, 1)));
+% 
+% % Calculate the dominant channel for each connected set
+% dominantChannels = arrayfun(@(set) mode(connectedSets(connectedSets(:, 1) == set, 2)), unique(connectedSets(:, 1)));
+% 
+% % Display results
+% disp('Number of Unique Channels per Connected Set:');
+% disp(uniqueChannelsPerSet');
+% disp('Dominant Channel for Each Connected Set:');
+% disp(dominantChannels');
 
 %% Perform correlation analysis between phase and amplitude
-
-uniqueSets = unique(cc(:, 5));
-correlationMatrices = zeros(size(uniqueSets));
-
-for i = 1:numel(uniqueSets)
-    currentSetData = cc(cc(:, 5) == uniqueSets(i), :);
-    dataForCorrelation = currentSetData(:, 2:3);
-    correlationMatrix = corr(dataForCorrelation);
-    correlationMatrices(i) = correlationMatrix(2);
-end
+% 
+% uniqueSets = unique(cc(:, 5));
+% correlationMatrices = zeros(size(uniqueSets));
+% 
+% for i = 1:numel(uniqueSets)
+%     currentSetData = cc(cc(:, 5) == uniqueSets(i), :);
+%     dataForCorrelation = currentSetData(:, 2:3);
+%     correlationMatrix = corr(dataForCorrelation);
+%     correlationMatrices(i) = correlationMatrix(2);
+% end
 %% Temporal participation ratio
-figure
-for s = uniqueSets'
-    soi = cc(cc(:,5) == s,1:4);
-    times = unique(soi(:,4));
-    tcounts = zeros(size(times));
-    for t = 1:length(times)
-        tcounts(t) = sum(soi(:,4) == t)/length(soi);
-    end
-    line(times,tcounts)
-    hold on
-end
+% figure
+% for s = uniqueSets'
+%     soi = cc(cc(:,5) == s,1:4);
+%     times = unique(soi(:,4));
+%     tcounts = zeros(size(times));
+%     for t = 1:length(times)
+%         tcounts(t) = sum(soi(:,4) == t)/length(soi);
+%     end
+%     line(times,tcounts)
+%     hold on
+% end
 %% Create histogram of permutation test connectivity distribution
 figure
 histogram(dist, 'BinMethod','fd' ,'Normalization', 'probability');

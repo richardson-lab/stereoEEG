@@ -7,7 +7,6 @@ function pacHist
 %   Neurosci.
 %
 %   DR 04/2023
-profile on
 
 % parameters
 fP = logspace(log10(1),log10(20),21); % phase: frequencies (Hz)
@@ -19,12 +18,17 @@ tstp = 30; % time step size (s)
 Nperm = 0; % number of permutations for MI significance test (leave empty or set to zero to not compute MIpval which takes a long time)
 tperm = [-60 60]; % interval of random permutation time shift (s)
 
+%
+parpool(maxNumCompThreads);
+
 % load data
 selpath = uigetdir([],'Select top directory of sEEG data');
 datfile = dir(fullfile(selpath,'**','*_Induction.mat'));
 for ifile = 1:length(datfile)
     cd(datfile(ifile).folder);
-    load(datfile(ifile).name);
+%     load(datfile(ifile).name,'bad_channels','channel_labels','data','sample_rate');
+    S = load(datfile(ifile).name,'bad_channels','channel_labels','data','sample_rate');
+    [bad_channels,channel_labels,data,sample_rate] = v2struct(S);
     disp(datfile(ifile).name);
     
     % remove bad channels and white matter channels
@@ -106,7 +110,7 @@ for ifile = 1:length(datfile)
                 end
                 if Nperm>1 % permutation test for significance of MI
                     MIperm = zeros(Nperm,Nt);
-                    for iperm = 1:Nperm
+                    parfor iperm = 1:Nperm
                         tshift = tperm(1) + diff(tperm)*rand; % random time shift (s)
                         nshift = round(tshift*sample_rate); % random time shift (samples)
                         Ashift = circshift(A,nshift);
@@ -116,7 +120,7 @@ for ifile = 1:length(datfile)
                             cA = Ashift(t1:t2);
                             cAm = zeros(1,Nx);
                             for jj = 1:Nx
-                                cAm(jj) = mean(cA(Pbin(:,iT)==jj),1);
+                                cAm(jj) = mean(cA(Pbin(:,iT)==jj));
                             end
                             cAm = cAm/sum(cAm);
                             cAm(cAm==0) = 1e-10;
@@ -145,5 +149,6 @@ for ifile = 1:length(datfile)
     PACparam.x = x;
     PACparam.channel_labels = channel_labels;
     % save(datfile(ifile).name,'PAC','PACmi','PACparam','-append');
-    profile viewer
 end
+
+delete(gcp);
