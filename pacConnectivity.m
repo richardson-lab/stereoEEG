@@ -6,8 +6,8 @@ threshold = 0.95; % for creating binary matrix
 conn = conndef(4, 'minimal'); % connectivity for bwconncomp
 
 % load data
-cd(fullfile(root,subj));
-load([subj '_Induction.mat']);
+filepath = fullfile(root,subj);
+load(fullfile(filepath, [subj '_Induction.mat']));
 
 % create binary data matrix
 pData = createBinaryMatrix(PACparam, PACmi, channel_labels, threshold);
@@ -59,11 +59,11 @@ cc = connectivity(pData, conn, permThreshold);
 % end
 %% Create histogram of permutation test connectivity distribution
 figure
-histogram(dist, 'BinMethod','fd' ,'Normalization', 'probability');
-title('Distribution of Permutation Test Connected Voxels');
+histogram(dist, 'BinMethod','integers' ,'Normalization', 'count');
+title('Distribution of Permutation Test Connected Set Sizes');
 xlabel('Number of Connected Voxels');
 ylabel('Probability');
-set(gca,'XScale','log','YScale','log')
+% set(gca,'XScale','log','YScale','log')
 xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
 %% Create histogram of test data connectivity distribution
 figure
@@ -74,7 +74,46 @@ xlabel('Number of Connected Voxels');
 ylabel('Probability');
 set(gca,'XScale','log','YScale','log')
 axis tight
+%% 3D scatter plot of  connected sets
+% no channel info on plot
+% Unique values in column 5 (identifying different sets)
+
+uniqueSets = unique(cc(:,5));
+filteredRows = [];
+
+for i = 1:length(uniqueSets)
+    % Isolate set
+    currentSet = cc(cc(:,5) == uniqueSets(i), :);
+ 
+    % Apply filters
+    if length(unique(currentSet(:,1))) > 1 &&...
+            length(unique(currentSet(:,4))) > 1 &&...
+            length(unique(currentSet(:,2))) > 1 &&...
+            length(unique(currentSet(:,3))) > 1
+
+        filteredRows = [filteredRows; currentSet];
+    end
+end
+
+fig = figure('Position', [100, 100, 800, 600]);
+scatterObj = scatter3(...
+    filteredRows(:, 2),...
+    filteredRows(:, 3),...
+    filteredRows(:, 4),...
+    20, filteredRows(:, 5), 'filled');
+title('Phase Amplitude Coupling - Filtered Connected Sets ');
+xlabel('Phase'); ylabel('Amplitude'); zlabel('Time');
+[~, NA, NP, Nt] = size(pData);
+xlim([0,NP+1]); ylim([0,NA+1]); zlim([0,Nt+1])
+colormap("lines"); %colorbar('Ticks',[-1, 0, 1]);
+zPosition = find(PACparam.t > tones.LOC,1);
+vertices = [0,0,zPosition; NP+1,0,zPosition; NP+1,NA+1,zPosition; 0,NA+1,zPosition];
+faces = [1, 2, 3, 4];
+patch('Vertices', vertices, 'Faces', faces, 'FaceColor', 'black', 'FaceAlpha', 0.25);
+
 %% Interactive 3D scatter plot of connected sets
+% cc = [channel phase amplitude time set]
+
 fig = figure('Position', [100, 100, 800, 600]);
 currentSet = 1;  
 scatterObj = scatter3(...
@@ -91,7 +130,7 @@ colormap(flag); colorbar('Ticks',[-1, 0, 1]);
 zPosition = find(PACparam.t > tones.LOC,1);
 vertices = [0,0,zPosition; NP+1,0,zPosition; NP+1,NA+1,zPosition; 0,NA+1,zPosition];
 faces = [1, 2, 3, 4];
-patch('Vertices', vertices, 'Faces', faces, 'FaceColor', 'blue', 'FaceAlpha', 0.25);
+patch('Vertices', vertices, 'Faces', faces, 'FaceColor', 'black', 'FaceAlpha', 0.25);
 setappdata(fig, 'scatterObj', scatterObj);
 setappdata(fig, 'sets', cc);
 uniqueSets = unique(cc(:, 5));
@@ -126,6 +165,7 @@ guidata(gcf);
 
 end
 %% Functions
+
 function cc = connectivity(binMat,conn,permThreshold)
 % find test data connectivity - outputs matrix of connected voxel. Each row
 % corresponds to a voxel. Columns are as follows [channels, phases,
@@ -133,19 +173,19 @@ function cc = connectivity(binMat,conn,permThreshold)
 
 % Find connected components in patient binary data
 CC = bwconncomp(binMat,conn);
-% Filter for connected voxel groups that are larger than perm threshold
+% Filter for connected voxel sets that are larger than perm threshold
 ccN = cellfun(@numel,CC.PixelIdxList);
 ccIdx = ccN > permThreshold;
 pacCC = cat(1, CC.PixelIdxList{1,ccIdx});
-% Create connected group identifier list
-it = 1; idxs = [];
+% Create connected set identifier list
+it = 1; setid = [];
 for i = ccN(ccIdx)
-    ids = ones(i,1)*it;
+    id = ones(i,1)*it;
     it = it+1;
-    idxs = [idxs; ids];
+    setid = [setid; id];
 end
 [channels, phases, amps, times] = ind2sub(size(binMat), pacCC);
-cc = [channels, phases, amps, times, idxs];
+cc = [channels, phases, amps, times, setid];
 end
 
 
@@ -160,7 +200,7 @@ Tch = length(channel_labels);
 binMat = zeros(Tch, NP, NA, Nt);
 for ich = 1:Tch
     if any(ismember(gcidx,ich))
-        binMat(ich,:,:,:) = PACstat(gcidx == ich,:,:,:,1) >= threshold;
+        binMat(ich,:,:,:) = PACstat(gcidx == ich,:,:,:,2) >= threshold;
     elseif any(ismember(bcidx,ich))
         binMat(ich,:,:,:) = zeros(NP,NA,Nt);
     end
