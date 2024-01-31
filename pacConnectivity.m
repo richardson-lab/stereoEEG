@@ -24,151 +24,81 @@ column = 4;
 % PACmi columns [1-tmi, 2-mrl, 3-mu, 4-tmip, 5-mrlp]
 
 % run permutation test
-nperm = 1000; shuffdims = [1 2 3 4]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
+nperm = 1000; shuffdims = [1 3]; % [1-Channel 2-Phase 3-Amplitude 4-Time]
 [dist, permThreshold] = runPermTest(binData, valData, shuffdims, nperm, conn);
 
 % run test data connectivity
 locbin = find(PACparam.t > tones.LOC,1)-1; % finds time bin including LOC 
 cc = connectivity(binData, valData, conn, permThreshold, locbin);
 
-%% Connected set characterization
-% parametersstats = grpstats(cc(:, 1:4), cc(:, 5), {'mean', 'std'});
-% [min, max, mean, std] = grpstats(cc(:, 1:4), cc(:, 5), {'min','max','mean','std'});
-% 
-% % Calculate the number of unique channels in each connected set
-% uniqueChannelsPerSet = arrayfun(@(set) numel(unique(connectedSets(connectedSets(:, 1) == set, 2))), unique(connectedSets(:, 1)));
-% 
-% % Calculate the dominant channel for each connected set
-% dominantChannels = arrayfun(@(set) mode(connectedSets(connectedSets(:, 1) == set, 2)), unique(connectedSets(:, 1)));
-% 
-% % Display results
-% disp('Number of Unique Channels per Connected Set:');
-% disp(uniqueChannelsPerSet');
-% disp('Dominant Channel for Each Connected Set:');
-% disp(dominantChannels');
-%% Temporal participation ratio
-% figure
-% for s = uniqueSets'
-%     soi = cc(cc(:,5) == s,1:4);
-%     times = unique(soi(:,4));
-%     tcounts = zeros(size(times));
-%     for t = 1:length(times)
-%         tcounts(t) = sum(soi(:,4) == t)/length(soi);
-%     end
-%     line(times,tcounts)
-%     hold on
-% end
 %% Create histogram of permutation test connectivity distribution
 figure
-histogram(dist, 'BinMethod','integers' ,'Normalization', 'probability');
-title('Distribution of Permutation Test Connected Set Sizes');
-xlabel('Sum of MI pvals of Connected Voxels');
+histogram(dist, 'BinMethod','auto' ,'Normalization', 'probability');
+title('Modulation Index of Connected Sets - Permutation Test');
+xlabel('Sum of MI for All Voxels in Connected Set');
 ylabel('Probability');
-% set(gca,'XScale','log','YScale','log')
+set(gca,'XScale','log','YScale','log')
 xline(permThreshold, 'r', 'LineWidth', 1, 'Label', ['Threshold:' string(permThreshold)]);
+
 %% Create histogram of test data connectivity distribution
 figure
 tdist = histcounts(cc(:,5), [unique(cc(:,5)); max(unique(cc(:,5)))+1]);
-histogram(tdist, 'Normalization', 'probability','BinEdges',0:1:max(tdist) );
-title('Distribution of Test Data Connected Voxels');
-xlabel('Number of Connected Voxels');
-ylabel('Probability');
-set(gca,'XScale','log','YScale','log')
+histogram(tdist, 'Normalization', 'count','BinMethod','auto' );
+title('Connected Set Sizes');
+xlabel('Number of Voxels');
+yticks(0:max(histcounts(tdist)))
+ylabel('Count');
 axis tight
-%% 3D scatter plot of (filtered) connected sets
-% no channel info on plot
-% Unique values in column 5 (identifying different sets)
 
-uniqueSets = unique(cc(:,5));
-filteredRows = [];
+%% 3D scatter plot of all connected sets
 
-for i = 1:length(uniqueSets)
-    % Isolate set
-    currentSet = cc(cc(:,5) == uniqueSets(i), :);
- 
-    % Apply filters
-    if length(unique(currentSet(:,1))) > 1 &&...
-            length(unique(currentSet(:,4))) > 1 &&...
-            length(unique(currentSet(:,2))) > 1 &&...
-            length(unique(currentSet(:,3))) > 1
-    % if all(ismember(unique(currentSet(:,3)), 10:20)) &&...
-    %         all(ismember(unique(currentSet(:,2)), 0:10))
-
-        filteredRows = [filteredRows; currentSet];
-    end
+uchannels = unique(cc(:,1));
+ccplot = zeros(size(cc));
+for r = 1:length(ccplot)
+    ccplot(r,1) = find(uchannels == cc(r,1));
+    ccplot(r,2) = cc(r,2);
+    ccplot(r,3) = cc(r,3);
+    ccplot(r,4) = cc(r,4);
+    ccplot(r,5) = cc(r,5);
 end
 
 fig = figure('Position', [100, 100, 800, 600]);
-scatterObj = scatter3(...
-    filteredRows(:, 2),...
-    filteredRows(:, 3),...
-    filteredRows(:, 4),...
-    20, filteredRows(:, 5), 'filled');
-title('Phase Amplitude Coupling - Filtered Connected Sets ');
-xlabel('Phase'); ylabel('Amplitude'); zlabel('Time');
+for scat=1:length(uchannels)
+    scatterObj = scatter3(...
+        ccplot(ccplot(:,1)==scat, 2),...
+        ccplot(ccplot(:,1)==scat, 3),...
+        ccplot(ccplot(:,1)==scat, 4)-locbin,...
+        50, ccplot(ccplot(:,1)==scat, 1), 'filled');
+    hold on
+end
+
 [~, NA, NP, Nt] = size(binData);
-xlim([0,NP+1]); ylim([0,NA+1]); zlim([min(cc(:,4))-1,max(cc(:,4))+1]) %zlim([-10 10]) 
-colormap("lines"); %colorbar('Ticks',[-1, 0, 1]);
+
 vertices = [0,0,0; NP+1,0,0; NP+1,NA+1,0; 0,NA+1,0];
 faces = [1, 2, 3, 4];
 patch('Vertices', vertices, 'Faces', faces, 'FaceColor', 'black', 'FaceAlpha', 0.25);
 
-%% Interactive 3D scatter plot of connected sets
-% cc = [channel phase amplitude time set]
 
-fig = figure('Position', [100, 100, 800, 600]);
-currentSet = 1;  
-scatterObj = scatter3(...
-    cc(cc(:,5) == currentSet, 2),...
-    cc(cc(:,5) == currentSet, 3),...
-    cc(cc(:,5) == currentSet, 4),...
-    50, cc(cc(:,5) == currentSet, 1), 'filled');
-title(['Phase Amplitude Coupling - Connected Set ' num2str(currentSet)]);
-xlabel('Phase'); ylabel('Amplitude'); zlabel('Time');
-[~, NA, NP, Nt] = size(binData);
-xlim([0,NP+1]); ylim([0,NA+1]); zlim([min(cc(:,4))-1,max(cc(:,4))+1])
-colormap(flag); colorbar('Ticks',[-1, 0, 1]);
-% Plot rectangular plane at LOC
-vertices = [0,0,0; NP+1,0,0; NP+1,NA+1,0; 0,NA+1,0];
-faces = [1, 2, 3, 4];
-patch('Vertices', vertices, 'Faces', faces, 'FaceColor', 'black', 'FaceAlpha', 0.25);
-setappdata(fig, 'scatterObj', scatterObj);
-setappdata(fig, 'sets', cc);
-uniqueSets = unique(cc(:, 5));
-numSets = length(uniqueSets);
-setNames = cell(1, numSets);
-for i = 1:numSets
-    setNames{i} = ['Set ' num2str(uniqueSets(i))];
+colorLabels = cell(length(uchannels)+1,1);
+for color = 1:length(uchannels)
+    colorLabels{color} = channel_labels{uchannels(color),2};
 end
-channelMenu = uicontrol('Style', 'popupmenu', 'Position', [10, 10, 120, 25],...
-    'String', ['Select Set|' setNames], 'Callback', @updateSet);
+colorLabels{end} = 'LOC';
+title([subj(1:6) ' Phase Amplitude Coupling - All Connected Sets']);
+xlabel('Phase Frequency (Hz)'); ylabel('Amplitude Frequency (Hz)'); zlabel('Time (s)');
+xlim([0,NP+1]); ylim([0,NA+1]); zlim([min(cc(:,4))-locbin,max(cc(:,4))-locbin])
+colormap("jet");
+yticks(1:NA); xticks(1:NP);
+ytick = get(gca,'YTick'); set(gca,'YTickLabel',num2str(mean(PACparam.rA(ytick,:),2),'%4.2f\n'));
+xtick = get(gca,'XTick'); set(gca,'XTickLabel',num2str(mean(PACparam.rP(xtick,:),2),'%4.2f\n'));
+ztick = get(gca,'ZTick'); set(gca,'ZTickLabel',num2str(ztick*PACparam.tstp,'%i\n'));
+legend(colorLabels)
 
-function updateSet(source, ~)
-    fig = gcf;
-    scatterObj = getappdata(fig, 'scatterObj');
-    cc = getappdata(fig, 'sets');
-
-    selectedSet = source.Value - 1;  % Adjust to match the channel numbering
-    if selectedSet == 0
-        set(scatterObj, 'XData', cc(cc(:,5) == currentSet, 2));
-        set(scatterObj, 'YData', cc(cc(:,5) == currentSet, 3));
-        set(scatterObj, 'ZData', cc(cc(:,5) == currentSet, 4));
-        set(scatterObj, 'CData', cc(cc(:,5) == currentSet, 1));
-        title(['Interactive 3D Scatter Plot - Set ' num2str(currentSet)]);
-    else
-        set(scatterObj, 'XData', cc(cc(:,5) == selectedSet, 2));
-        set(scatterObj, 'YData', cc(cc(:,5) == selectedSet, 3));
-        set(scatterObj, 'ZData', cc(cc(:,5) == selectedSet, 4));
-        set(scatterObj, 'CData', cc(cc(:,5) == selectedSet, 1));
-        title(['Interactive 3D Scatter Plot - Set ' num2str(selectedSet)]);
-    end
-guidata(gcf);
-
-end
 %% FUNCTIONS
 
 
-function [binMat, valMat] = createBinaryMatrix(PACparam, PACstatistic, labels, thresh, col)
+function [binMat, valMat] = createBinaryMatrix(PACparam, PACstatistic,...
+    labels, thresh, col)
 % create binary matrix - outputs the binary matrix binMat containing zeros
 % in all dummy channels
 
@@ -181,7 +111,7 @@ valMat = zeros(Tch, NP, NA, Nt);
 for ich = 1:Tch
     if any(ismember(gcidx,ich))
         binMat(ich,:,:,:) = PACstatistic(gcidx == ich,:,:,:,col) >= thresh;
-        valMat(ich,:,:,:) = PACstatistic(find(gcidx==ich),:,:,:,col);
+        valMat(ich,:,:,:) = PACstatistic(find(gcidx==ich),:,:,:,1);
     elseif any(ismember(bcidx,ich))
         binMat(ich,:,:,:) = zeros(NP,NA,Nt);
         valMat(ich,:,:,:) = zeros(NP,NA,Nt);
@@ -190,9 +120,10 @@ end
 end
 
 
-function [connSumDistribution, permThreshold] = runPermTest(binMat, valMat, shuffdims, nPerm, conn)
+function [connSumDistribution, permThreshold] = runPermTest(binMat, valMat,...
+    shuffdims, nPerm, conn)
 % permutation test - outputs connectivity distribution and connected set
-% size threshold
+% sum-based statistic threshold
 
 cidx = find(any(binMat ~= 0, [2 3 4])); % indices of data channels 
 ndim = size(binMat);
@@ -203,10 +134,6 @@ for p = 1:nPerm
         if n == 1
             idx = cidx; 
             permutedData(idx, :, :, :) = permutedData(idx(randperm(length(idx))), :, :, :);
-            gctestidx = find(any(permutedData ~= 0, [2 3 4]));
-            if ~isequal(gctestidx, idx)
-                error('Error shuffling channel data')
-            end
         elseif n == 2
             idx = 1:ndim(n); 
             permutedData(:, idx, :, :) = permutedData(:, idx(randperm(length(idx))), :, :);
@@ -221,12 +148,10 @@ for p = 1:nPerm
     CC = bwconncomp(permutedData,conn); % determine connectedness
     cDist{p} = CC.PixelIdxList; % store connected voxel matrix
 end
-% connDistributionCell = cellfun(@(nestedCellArray) cellfun(@numel, nestedCellArray), cDist, 'UniformOutput', false);
-% connDistribution = horzcat(connDistributionCell{:});
-% permThreshold = quantile(connDistribution,0.95);
-connSumCell = cellfun(@(nestedCellArray) cellfun(@(idx) sum(valMat(idx)), nestedCellArray), cDist, 'UniformOutput', false);
+connSumCell = cellfun(@(nestedCellArray) cellfun(@(idx) sum(valMat(idx)),...
+    nestedCellArray), cDist, 'UniformOutput', false);
 connSumDistribution = horzcat(connSumCell{:});
-permThreshold = quantile(connSumDistribution,0.975);
+permThreshold = quantile(connSumDistribution,0.95);
 end
 
 
@@ -237,10 +162,7 @@ function cc = connectivity(binMat, valMat, conn, permThreshold, loctime)
 
 % Find connected components in binary matrix
 CC = bwconncomp(binMat,conn);
-
-% % Filter for connected voxel sets that are larger than perm threshold
-ccN = cellfun(@numel,CC.PixelIdxList);
-% ccIdx = ccN > permThreshold;
+ccN = cellfun(@numel,CC.PixelIdxList); % sizes of connected voxel sets
 
 % Filter for connected voxel sets with larger sums than perm threshold
 connSums = cellfun(@(idx) sum(valMat(idx)), CC.PixelIdxList);
@@ -255,15 +177,5 @@ for i = ccN(ccIdx)
     setid = [setid; id];
 end
 [channels, phases, amps, times] = ind2sub(size(binMat), pacCC);
-
-% reset time index 0 to LOC
-times = times-loctime;
-
-% % reset channel ids to channel labels
-% uchannels = unique(channels);
-% for c = 1:length(uchannels)
-%     channels(channels == c) = labels{uchannels(c)};
-% end
-
 cc = [channels, phases, amps, times, setid];
 end
