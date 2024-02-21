@@ -1,3 +1,7 @@
+# Ignore .mat data files
+ChannelLabels.mat
+ChannelLabelsMap.mat
+
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
